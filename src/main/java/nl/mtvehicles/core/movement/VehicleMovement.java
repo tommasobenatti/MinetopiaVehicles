@@ -1,6 +1,7 @@
 package nl.mtvehicles.core.movement;
 
 import com.google.common.collect.Sets;
+import nl.mtvehicles.core.Main;
 import nl.mtvehicles.core.events.HornUseEvent;
 import nl.mtvehicles.core.events.TankShootEvent;
 import nl.mtvehicles.core.events.VehicleRegionEnterEvent;
@@ -29,6 +30,7 @@ import org.bukkit.entity.*;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.List;
@@ -330,7 +332,7 @@ public class VehicleMovement {
             }
             putFuelUsage();
 
-            if (VehicleData.speed.get(license) < -maxSpeedBackwards) return;
+            if (VehicleData.speed.get(license) < - maxSpeedBackwards) return;
             VehicleData.speed.put(license, VehicleData.speed.get(license) - accelerationSpeed);
         }
     }
@@ -914,68 +916,139 @@ public class VehicleMovement {
      * Checked whether a player is jumping (got from the steering packet)
      * @return True if player is jumping
      */
-    protected boolean steerIsJumping(){
+    protected boolean steerIsJumping() {
         boolean isJumping = false;
         try {
-            String declaredMethod = "d";
+            if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_21_R2)) {
+                Object inputPacket = getInputPacket();
+                if (inputPacket != null) {
+                    Field jumpField = inputPacket.getClass().getDeclaredField("g");
+                    jumpField.setAccessible(true);
+                    isJumping = (boolean) jumpField.get(inputPacket);
+                }
+            } else {
+                String declaredMethod = "d";
+                if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R2) && getServerVersion().isOlderThan(ServerVersion.v1_20_R4)) {
+                    declaredMethod = "e";
+                } else if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R4) && getServerVersion().isOlderThan(ServerVersion.v1_21_R2)) {
+                    declaredMethod = "f";
+                }
 
-            if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R2) && getServerVersion().isOlderThan(ServerVersion.v1_20_R4))  {
-                declaredMethod = "e";
-            } else if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R4)) {
-                declaredMethod = "f";
+                Method method = packet.getClass().getDeclaredMethod(declaredMethod);
+                method.setAccessible(true);
+                isJumping = (Boolean) method.invoke(packet);
             }
-
-            Method method = packet.getClass().getDeclaredMethod(declaredMethod);
-            isJumping = (Boolean) method.invoke(packet);
         } catch (Exception e) {
             e.printStackTrace();
         }
         return isJumping;
     }
 
+    private boolean isForwardPressed = false;
+    private boolean isBackwardPressed = false;
+    private boolean isLeftPressed = false;
+    private boolean isRightPressed = false;
+
     /**
      * Get steering packet's rotation
      * @return Rotation from the packet
      */
-    protected float steerGetXxa(){
-        float Xxa = 0;
+    protected float steerGetXxa() {
+        float Xxa = 0.0f;
         try {
-            String declaredMethod = "b";
+            if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_21_R2)) {
+                Object inputPacket = getInputPacket();
+                if (inputPacket != null) {
+                    Field leftField = inputPacket.getClass().getDeclaredField("e");
+                    Field rightField = inputPacket.getClass().getDeclaredField("f");
 
-            if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_19_R3) && getServerVersion().isOlderThan(ServerVersion.v1_20_R4)) {
-                declaredMethod = "a";
+                    leftField.setAccessible(true);
+                    rightField.setAccessible(true);
+
+                    isLeftPressed = (boolean) leftField.get(inputPacket);
+                    isRightPressed = (boolean) rightField.get(inputPacket);
+
+                    if (isLeftPressed) Xxa = 0.98f;
+                    else if (isRightPressed) Xxa = -0.98f;
+                }
+            } else {
+                String declaredMethod = "b";
+                if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_19_R3) && getServerVersion().isOlderThan(ServerVersion.v1_20_R4)) {
+                    declaredMethod = "a";
+                }
+
+                Method method = packet.getClass().getDeclaredMethod(declaredMethod);
+                method.setAccessible(true);
+                Xxa = (float) method.invoke(packet);
             }
-
-            Method method = packet.getClass().getDeclaredMethod(declaredMethod);
-            Xxa = (float) method.invoke(packet);
         } catch (Exception e) {
             e.printStackTrace();
         }
         return Xxa;
     }
 
+
     /**
-     * Get steering packet's movement (forwards × backwards)
+     * Get steering packet's movement
      * @return Movement from the packet
      */
-    protected float steerGetZza(){
+    protected float steerGetZza() {
         float Zza = 0;
         try {
-            String declaredMethod = "c";
+            if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_21_R2)) {
+                Object inputPacket = getInputPacket();
+                if (inputPacket != null) {
+                    Field forwardField = inputPacket.getClass().getDeclaredField("c");
+                    Field backwardField = inputPacket.getClass().getDeclaredField("d");
 
-            if (VersionModule.getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R2) && getServerVersion().isOlderThan(ServerVersion.v1_20_R4)) {
-                declaredMethod = "d";
-            } else if(getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R4)){
-                declaredMethod = "e";
+                    forwardField.setAccessible(true);
+                    backwardField.setAccessible(true);
+
+                    isForwardPressed = (boolean) forwardField.get(inputPacket);
+                    isBackwardPressed = (boolean) backwardField.get(inputPacket);
+
+                    if (isForwardPressed) Zza = 0.98f;
+                    else if (isBackwardPressed) Zza = -0.98f;
+                }
+            } else {
+                String declaredMethod = "c";
+                if (VersionModule.getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R2) && getServerVersion().isOlderThan(ServerVersion.v1_20_R4)) {
+                    declaredMethod = "d";
+                } else if (getServerVersion().isNewerOrEqualTo(ServerVersion.v1_20_R4)) {
+                    declaredMethod = "e";
+                }
+
+                Method method = packet.getClass().getDeclaredMethod(declaredMethod);
+                method.setAccessible(true);
+                Zza = (float) method.invoke(packet);
             }
-
-            Method method = packet.getClass().getDeclaredMethod(declaredMethod);
-            Zza = (float) method.invoke(packet);
         } catch (Exception e) {
             e.printStackTrace();
         }
         return Zza;
     }
+
+
+    /**
+     * Get the name of the Input Packet
+     * @since 1.21.3
+     * @return Input Field name
+     */
+    private Object getInputPacket() {
+        try {
+            Method[] methods = packet.getClass().getDeclaredMethods();
+            for (Method method : methods) {
+                if (method.getReturnType().equals(net.minecraft.world.entity.player.Input.class)) {
+                    method.setAccessible(true);
+                    return method.invoke(packet);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 
     /**
      * Spawn tank's shooting particles
