@@ -46,6 +46,7 @@ public class Main extends JavaPlugin {
         logInfo("Welcome by MTVehicles v" + VersionModule.pluginVersionString + "!");
         logInfo("Thanks for using our plugin.");
         logInfo("--------------------------");
+        logInfo(Bukkit.getVersion() + " e " + Bukkit.getBukkitVersion());
 
         disableNBTAPIVersionMessages();
         loadSkript();

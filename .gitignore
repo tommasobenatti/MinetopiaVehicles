@@ -4,3 +4,8 @@ target/
 .metals
 .vscode
 /.fleet
+.DS_Store
+.idea/misc.xml
+dependency-reduced-pom.xml
+dependency-reduced-pom.xml
+.idea/misc.xml
